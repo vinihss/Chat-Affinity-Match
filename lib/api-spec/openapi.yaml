@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API specification for Chat por Afinidade
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User operations
+  - name: queue
+    description: Matchmaking queue operations
+  - name: matches
+    description: Match and chat operations
 paths:
   /healthz:
     get:
@@ -24,6 +30,215 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /users/register:
+    post:
+      operationId: registerUser
+      tags: [users]
+      summary: Register or update user preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterUserBody"
+      responses:
+        "200":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{userId}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /queue/join:
+    post:
+      operationId: joinQueue
+      tags: [queue]
+      summary: Join the matchmaking queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinQueueBody"
+      responses:
+        "200":
+          description: Joined queue or matched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueResult"
+
+  /queue/leave:
+    post:
+      operationId: leaveQueue
+      tags: [queue]
+      summary: Leave the matchmaking queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaveQueueBody"
+      responses:
+        "200":
+          description: Left queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /queue/status/{userId}:
+    get:
+      operationId: getQueueStatus
+      tags: [queue]
+      summary: Get queue / match status for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Queue status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueResult"
+
+  /matches/{matchId}/messages:
+    get:
+      operationId: getMessages
+      tags: [matches]
+      summary: Get text messages for a match session
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Messages list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+    post:
+      operationId: sendMessage
+      tags: [matches]
+      summary: Send a text message in a match
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageBody"
+      responses:
+        "200":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+
+  /matches/{matchId}/next:
+    post:
+      operationId: skipMatch
+      tags: [matches]
+      summary: Skip current match and find next
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkipMatchBody"
+      responses:
+        "200":
+          description: Skipped, new match info returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueResult"
+
+  /matches/{matchId}/end:
+    post:
+      operationId: endMatch
+      tags: [matches]
+      summary: End a match session
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EndMatchBody"
+      responses:
+        "200":
+          description: Match ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /stats/topics:
+    get:
+      operationId: getTopicStats
+      tags: [queue]
+      summary: Get popular topics and online user count
+      responses:
+        "200":
+          description: Topic stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopicStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +249,187 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        nickname:
+          type: string
+        gender:
+          type: string
+        topics:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - nickname
+        - gender
+        - topics
+        - createdAt
+
+    RegisterUserBody:
+      type: object
+      properties:
+        nickname:
+          type: string
+        gender:
+          type: string
+        topics:
+          type: array
+          items:
+            type: string
+          maxItems: 5
+      required:
+        - nickname
+        - gender
+        - topics
+
+    JoinQueueBody:
+      type: object
+      properties:
+        userId:
+          type: string
+      required:
+        - userId
+
+    LeaveQueueBody:
+      type: object
+      properties:
+        userId:
+          type: string
+      required:
+        - userId
+
+    QueueResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [waiting, matched]
+        matchId:
+          type: string
+          nullable: true
+        partnerId:
+          type: string
+          nullable: true
+        partnerNickname:
+          type: string
+          nullable: true
+        partnerGender:
+          type: string
+          nullable: true
+        partnerTopics:
+          type: array
+          items:
+            type: string
+          nullable: true
+        commonTopics:
+          type: array
+          items:
+            type: string
+          nullable: true
+        affinityScore:
+          type: number
+          nullable: true
+        waitingCount:
+          type: integer
+      required:
+        - status
+        - waitingCount
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        matchId:
+          type: string
+        senderId:
+          type: string
+        senderNickname:
+          type: string
+        content:
+          type: string
+        sentAt:
+          type: string
+      required:
+        - id
+        - matchId
+        - senderId
+        - senderNickname
+        - content
+        - sentAt
+
+    SendMessageBody:
+      type: object
+      properties:
+        senderId:
+          type: string
+        content:
+          type: string
+      required:
+        - senderId
+        - content
+
+    SkipMatchBody:
+      type: object
+      properties:
+        userId:
+          type: string
+      required:
+        - userId
+
+    EndMatchBody:
+      type: object
+      properties:
+        userId:
+          type: string
+      required:
+        - userId
+
+    TopicStats:
+      type: object
+      properties:
+        onlineCount:
+          type: integer
+        waitingCount:
+          type: integer
+        topTopics:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopicCount"
+      required:
+        - onlineCount
+        - waitingCount
+        - topTopics
+
+    TopicCount:
+      type: object
+      properties:
+        topic:
+          type: string
+        count:
+          type: integer
+      required:
+        - topic
+        - count
