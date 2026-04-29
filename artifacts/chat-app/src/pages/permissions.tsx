@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Mic, ShieldAlert, ExternalLink, RefreshCw } from "lucide-react";
+import { Camera, Mic, ShieldAlert, ExternalLink, RefreshCw, VideoOff } from "lucide-react";
 import { useMediaStream } from "@/contexts/media-stream-context";
 import { useEffect } from "react";
 
@@ -11,13 +11,13 @@ function getDirectAppUrl(path: string) {
 
 export default function Permissions() {
   const [, setLocation] = useLocation();
-  const { requestPermission, error, hasPermission, isRequesting, permissionDenied } = useMediaStream();
+  const { requestPermission, skipPermission, error, hasPermission, isSkipped, isRequesting, permissionDenied } = useMediaStream();
 
   useEffect(() => {
-    if (hasPermission) {
+    if (hasPermission || isSkipped) {
       setLocation("/fila");
     }
-  }, [hasPermission, setLocation]);
+  }, [hasPermission, isSkipped, setLocation]);
 
   const handleRequest = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -28,6 +28,10 @@ export default function Permissions() {
     if (granted) {
       setLocation("/fila");
     }
+  };
+
+  const handleSkip = () => {
+    skipPermission();
   };
 
   const openDirect = () => {
@@ -58,7 +62,7 @@ export default function Permissions() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
 
           {error && (
             <div className="flex flex-col gap-3 p-4 rounded-lg bg-destructive/10 text-destructive text-sm text-left border border-destructive/20">
@@ -83,7 +87,7 @@ export default function Permissions() {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 text-amber-400 text-sm text-left border border-amber-500/20">
               <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
               <p>
-                Seu navegador nao consegue acessar a camera aqui. Abra o app em uma nova aba clicando no botao abaixo.
+                Seu navegador nao consegue acessar a camera aqui. Abra o app em uma nova aba ou entre so com o chat de texto.
               </p>
             </div>
           )}
@@ -109,18 +113,29 @@ export default function Permissions() {
             )}
           </Button>
 
+          <Button
+            data-testid="button-skip-permission"
+            variant="ghost"
+            className="w-full h-10 text-muted-foreground hover:text-foreground font-normal"
+            onClick={handleSkip}
+            disabled={isRequesting}
+          >
+            <VideoOff className="w-4 h-4 mr-2" />
+            Entrar sem camera (so chat de texto)
+          </Button>
+
           {!noMediaDevices && (
             <button
               data-testid="button-open-direct"
               onClick={openDirect}
-              className="w-full text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors flex items-center justify-center gap-1 py-1"
+              className="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground underline-offset-4 hover:underline transition-colors flex items-center justify-center gap-1 py-1"
             >
               <ExternalLink className="w-3 h-3" />
               Nao funcionou? Abrir em nova aba
             </button>
           )}
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground/60 pt-1">
             Seus dados sao transmitidos ponto a ponto e nao sao gravados.
           </p>
         </CardContent>

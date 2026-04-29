@@ -3,10 +3,12 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 interface MediaStreamContextValue {
   stream: MediaStream | null;
   hasPermission: boolean;
+  isSkipped: boolean;
   permissionDenied: boolean;
   isRequesting: boolean;
   error: string | null;
   requestPermission: () => Promise<boolean>;
+  skipPermission: () => void;
   stopStream: () => void;
   toggleMic: () => void;
   toggleCamera: () => void;
@@ -19,6 +21,7 @@ const MediaStreamContext = createContext<MediaStreamContextValue | null>(null);
 export function MediaStreamProvider({ children }: { children: React.ReactNode }) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
+  const [isSkipped, setIsSkipped] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +42,7 @@ export function MediaStreamProvider({ children }: { children: React.ReactNode })
     setIsRequesting(true);
     setError(null);
     setPermissionDenied(false);
+    setIsSkipped(false);
 
     try {
       const userStream = await navigator.mediaDevices.getUserMedia({
@@ -81,6 +85,13 @@ export function MediaStreamProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  const skipPermission = useCallback(() => {
+    setIsSkipped(true);
+    setHasPermission(false);
+    setError(null);
+    setPermissionDenied(false);
+  }, []);
+
   const stopStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -118,10 +129,12 @@ export function MediaStreamProvider({ children }: { children: React.ReactNode })
     <MediaStreamContext.Provider value={{
       stream,
       hasPermission,
+      isSkipped,
       permissionDenied,
       isRequesting,
       error,
       requestPermission,
+      skipPermission,
       stopStream,
       toggleMic,
       toggleCamera,

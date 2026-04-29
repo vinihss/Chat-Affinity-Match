@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Video, VideoOff, PhoneMissed, SkipForward, Send, Loader2 } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneMissed, SkipForward, Send, Loader2, UserRound } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import {
   useGetMessages,
@@ -22,7 +22,7 @@ export default function Chat() {
   const matchId = params.matchId!;
   const [, setLocation] = useLocation();
   const { userId } = useUserSession();
-  const { stream, isMicMuted, isCameraOff, toggleMic, toggleCamera } = useMediaStream();
+  const { stream, isSkipped, isMicMuted, isCameraOff, toggleMic, toggleCamera } = useMediaStream();
   const queryClient = useQueryClient();
 
   const [messageInput, setMessageInput] = useState("");
@@ -99,15 +99,27 @@ export default function Chat() {
     return null;
   }
 
+  const noVideo = !stream || isSkipped;
+
   return (
     <div className="h-screen w-full bg-background flex flex-col md:flex-row overflow-hidden">
       <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
-        <video
-          ref={remoteVideoRef}
-          autoPlay
-          playsInline
-          className="w-full h-full object-cover opacity-90 scale-x-[-1]"
-        />
+
+        {noVideo ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-black gap-4">
+            <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center">
+              <UserRound className="w-14 h-14 text-white/40" />
+            </div>
+            <p className="text-white/40 text-sm">Camera desativada</p>
+          </div>
+        ) : (
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover opacity-90 scale-x-[-1]"
+          />
+        )}
 
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none" />
 
@@ -136,43 +148,49 @@ export default function Chat() {
           </div>
         )}
 
-        <div className="absolute bottom-24 right-6 w-32 md:w-48 aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-white/10 z-10 transition-transform hover:scale-105">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover scale-x-[-1]"
-          />
-          {isCameraOff && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-              <VideoOff className="w-8 h-8 text-white/50" />
-            </div>
-          )}
-        </div>
+        {!noVideo && (
+          <div className="absolute bottom-24 right-6 w-32 md:w-48 aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-white/10 z-10 transition-transform hover:scale-105">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover scale-x-[-1]"
+            />
+            {isCameraOff && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                <VideoOff className="w-8 h-8 text-white/50" />
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-center items-center gap-4 z-20">
-          <Button
-            data-testid="button-toggle-mic"
-            variant="outline"
-            size="icon"
-            className={`w-12 h-12 rounded-full border-none shadow-lg ${isMicMuted ? 'bg-destructive hover:bg-destructive/90 text-white' : 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md'}`}
-            onClick={toggleMic}
-          >
-            {isMicMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </Button>
+          {!noVideo && (
+            <>
+              <Button
+                data-testid="button-toggle-mic"
+                variant="outline"
+                size="icon"
+                className={`w-12 h-12 rounded-full border-none shadow-lg ${isMicMuted ? 'bg-destructive hover:bg-destructive/90 text-white' : 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md'}`}
+                onClick={toggleMic}
+              >
+                {isMicMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </Button>
 
-          <Button
-            data-testid="button-toggle-camera"
-            variant="outline"
-            size="icon"
-            className={`w-12 h-12 rounded-full border-none shadow-lg ${isCameraOff ? 'bg-destructive hover:bg-destructive/90 text-white' : 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md'}`}
-            onClick={toggleCamera}
-          >
-            {isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-          </Button>
+              <Button
+                data-testid="button-toggle-camera"
+                variant="outline"
+                size="icon"
+                className={`w-12 h-12 rounded-full border-none shadow-lg ${isCameraOff ? 'bg-destructive hover:bg-destructive/90 text-white' : 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md'}`}
+                onClick={toggleCamera}
+              >
+                {isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+              </Button>
 
-          <div className="w-px h-8 bg-white/20 mx-2" />
+              <div className="w-px h-8 bg-white/20 mx-2" />
+            </>
+          )}
 
           <Button
             data-testid="button-next-user"
@@ -199,6 +217,9 @@ export default function Chat() {
       <div className="w-full md:w-80 lg:w-96 bg-card border-l border-card-border flex flex-col z-30 h-1/3 md:h-auto shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
         <div className="p-4 border-b border-card-border bg-card/80 backdrop-blur-sm shrink-0">
           <h3 className="font-semibold text-foreground">Chat</h3>
+          {noVideo && (
+            <p className="text-xs text-muted-foreground mt-0.5">Modo so texto — camera desativada</p>
+          )}
         </div>
 
         <div className="flex-1 overflow-hidden relative">
