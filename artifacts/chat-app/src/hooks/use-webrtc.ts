@@ -135,7 +135,7 @@ export function useWebRTC(
   }, [matchId, userId, partnerId, localStream]);
 
   useEffect(() => {
-    if (matchId && userId && partnerId && localStream) {
+    if (matchId && userId && partnerId) {
       setupPeerConnection();
     }
     return () => {

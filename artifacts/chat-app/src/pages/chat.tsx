@@ -50,7 +50,7 @@ export default function Chat() {
   const partnerId = matchDetails?.partnerId ?? null;
 
   const { remoteStream, status: rtcStatus } = useWebRTC(
-    isSkipped ? null : matchId,
+    matchId,
     userId,
     partnerId,
     stream,
@@ -114,7 +114,7 @@ export default function Chat() {
 
   const noLocalVideo = !stream || isSkipped;
   const remoteConnected = rtcStatus === "connected" && !!remoteStream;
-  const rtcConnecting = !isSkipped && rtcStatus === "connecting";
+  const rtcConnecting = rtcStatus === "connecting";
 
   return (
     <div className="h-screen w-full bg-background flex flex-col md:flex-row overflow-hidden">
@@ -135,12 +135,10 @@ export default function Chat() {
             {rtcConnecting ? (
               <div className="flex items-center gap-2 text-white/50 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Conectando video...</span>
+                <span>Conectando vídeo...</span>
               </div>
-            ) : isSkipped ? (
-              <p className="text-white/40 text-sm">Modo só texto</p>
             ) : (
-              <p className="text-white/40 text-sm">Aguardando video do parceiro...</p>
+              <p className="text-white/40 text-sm">Parceiro sem câmera ativa</p>
             )}
           </div>
         )}
@@ -246,7 +244,7 @@ export default function Chat() {
         <div className="p-4 border-b border-card-border bg-card/80 backdrop-blur-sm shrink-0">
           <h3 className="font-semibold text-foreground">Chat</h3>
           {isSkipped && (
-            <p className="text-xs text-muted-foreground mt-0.5">Modo só texto — câmera desativada</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Sua câmera está desativada</p>
           )}
         </div>
 
