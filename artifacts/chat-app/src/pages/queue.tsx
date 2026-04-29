@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useUserSession } from "@/hooks/use-user-session";
 import { useJoinQueue, useLeaveQueue, useGetQueueStatus, getGetQueueStatusQueryKey } from "@workspace/api-client-react";
@@ -10,13 +10,16 @@ export default function Queue() {
   const [, setLocation] = useLocation();
   const { userId } = useUserSession();
   const queryClient = useQueryClient();
-  
+
   const joinQueue = useJoinQueue();
   const leaveQueue = useLeaveQueue();
-  
-  const [hasJoined, setHasJoined] = useState(false);
 
-  const { data: queueStatus, isError } = useGetQueueStatus(userId || "", {
+  const [hasJoined, setHasJoined] = useState(false);
+  const isMatchedRef = useRef(false);
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
+
+  const { data: queueStatus } = useGetQueueStatus(userId || "", {
     query: {
       enabled: !!userId && hasJoined,
       refetchInterval: 2000,
@@ -29,35 +32,34 @@ export default function Queue() {
       setLocation("/");
       return;
     }
-
     if (!hasJoined) {
       joinQueue.mutate(
         { data: { userId } },
         {
           onSuccess: () => setHasJoined(true),
-          onError: () => {
-            // Handle error, maybe user not found
-            setLocation("/");
-          }
+          onError: () => setLocation("/"),
         }
       );
     }
-
-    return () => {
-      // Don't leave queue on unmount if we matched
-      if (queueStatus?.status !== "matched" && hasJoined) {
-        leaveQueue.mutate({ data: { userId } });
-      }
-    };
-  }, [userId, setLocation, hasJoined, queueStatus?.status]);
+  }, [userId, hasJoined]);
 
   useEffect(() => {
     if (queueStatus?.status === "matched" && queueStatus.matchId) {
+      isMatchedRef.current = true;
       setLocation(`/chat/${queueStatus.matchId}`);
     }
-  }, [queueStatus, setLocation]);
+  }, [queueStatus?.status, queueStatus?.matchId]);
+
+  useEffect(() => {
+    return () => {
+      if (!isMatchedRef.current && userIdRef.current) {
+        leaveQueue.mutate({ data: { userId: userIdRef.current } });
+      }
+    };
+  }, []);
 
   const handleCancel = () => {
+    isMatchedRef.current = true;
     if (userId) {
       leaveQueue.mutate({ data: { userId } }, {
         onSettled: () => setLocation("/")
@@ -69,7 +71,6 @@ export default function Queue() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Dynamic radar animation background */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full border border-primary/20 animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-primary/10 animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite] animation-delay-500" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
@@ -90,13 +91,13 @@ export default function Queue() {
         {queueStatus && (
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium">
             <Users className="w-4 h-4" />
-            <span>{queueStatus.waitingCount} pessoas na fila</span>
+            <span>{queueStatus.waitingCount} {queueStatus.waitingCount === 1 ? "pessoa na fila" : "pessoas na fila"}</span>
           </div>
         )}
 
-        <Button 
-          variant="outline" 
-          size="lg" 
+        <Button
+          variant="outline"
+          size="lg"
           onClick={handleCancel}
           className="mt-8 border-muted-foreground/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
         >
