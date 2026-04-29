@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Video, VideoOff, PhoneMissed, SkipForward, Send, Loader2, UserRound, Wifi, WifiOff } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneMissed, SkipForward, Send, Loader2, UserRound } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import {
   useGetMessages,
@@ -42,12 +42,13 @@ export default function Chat() {
   const { data: matchDetails } = useGetQueueStatus(userId || "", {
     query: {
       enabled: !!userId,
-      refetchInterval: 5000,
+      refetchInterval: 1000,
       queryKey: getGetQueueStatusQueryKey(userId || ""),
     }
   });
 
-  const partnerId = matchDetails?.partnerId ?? null;
+  // Read partnerId from localStorage immediately (set by queue page on match)
+  const partnerId = matchDetails?.partnerId ?? localStorage.getItem(`match_partner_${matchId}`);
 
   const { remoteStream, status: rtcStatus } = useWebRTC(
     matchId,
@@ -113,8 +114,8 @@ export default function Chat() {
   }
 
   const noLocalVideo = !stream || isSkipped;
-  const remoteConnected = rtcStatus === "connected" && !!remoteStream;
-  const rtcConnecting = rtcStatus === "connecting";
+  const remoteConnected = !!remoteStream;
+  const rtcConnecting = rtcStatus === "connecting" || rtcStatus === "idle";
 
   return (
     <div className="h-screen w-full bg-background flex flex-col md:flex-row overflow-hidden">
@@ -153,7 +154,7 @@ export default function Chat() {
                   {matchDetails.partnerNickname}
                 </h2>
                 {!isSkipped && (
-                  <div className={`w-2 h-2 rounded-full ${rtcStatus === "connected" ? "bg-green-400" : "bg-yellow-400 animate-pulse"}`} />
+                  <div className={`w-2 h-2 rounded-full ${remoteConnected ? "bg-green-400" : "bg-yellow-400 animate-pulse"}`} />
                 )}
               </div>
               {matchDetails.commonTopics && matchDetails.commonTopics.length > 0 && (

@@ -46,6 +46,9 @@ export default function Queue() {
   useEffect(() => {
     if (queueStatus?.status === "matched" && queueStatus.matchId) {
       isMatchedRef.current = true;
+      if (queueStatus.partnerId) {
+        localStorage.setItem(`match_partner_${queueStatus.matchId}`, queueStatus.partnerId);
+      }
       setLocation(`/chat/${queueStatus.matchId}`);
     }
   }, [queueStatus?.status, queueStatus?.matchId]);
